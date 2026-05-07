@@ -35,7 +35,7 @@ with sync_playwright() as p:
 
     page.goto(URL, timeout=60000)
 
-    page.wait_for_timeout(5000)
+    page.wait_for_timeout(7000)
 
     links = page.locator("a").evaluate_all("""
         elements => elements.map(el => ({
@@ -51,12 +51,19 @@ with sync_playwright() as p:
         href = item.get("href", "")
         title = item.get("text", "").strip()
 
-        if "/videogiochi/" not in href:
+        # Ignora link vuoti
+        if not href:
             continue
 
-        if not title:
+        # SOLO link subito reali
+        if "subito.it" not in href:
             continue
 
+        # Evita roba inutile
+        if len(title) < 10:
+            continue
+
+        # Evita duplicati
         if href in seen:
             continue
 
