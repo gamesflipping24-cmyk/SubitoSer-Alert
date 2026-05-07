@@ -7,12 +7,19 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 RSS_FEEDS = [
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=new+3ds+xl&shp=true&rss=true",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=ds+lite&shp=true&rss=true",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=console+nintendo&shp=true&rss=true"
+    "https://www.subito.it/annunci-italia/vendita/usato/?q=new+3ds+xl&shp=true&rss=true"
 ]
 
 SEEN_FILE = "seen.json"
+
+# TEST TELEGRAM IMMEDIATO
+requests.post(
+    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+    data={
+        "chat_id": CHAT_ID,
+        "text": "✅ TEST TELEGRAM OK"
+    }
+)
 
 try:
     with open(SEEN_FILE, "r") as f:
