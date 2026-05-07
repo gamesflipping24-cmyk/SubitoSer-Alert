@@ -1,32 +1,14 @@
+from playwright.sync_api import sync_playwright
 import requests
-from bs4 import BeautifulSoup
 import json
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-SEARCH_URLS = [
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=new+3ds+xl",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=new+3ds",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=2ds+xl",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=dsi+xl",
-    "https://www.subito.it/annunci-italia/vendita/usato/?q=lotto+nintendo"
-]
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0"
-}
+URL = "https://www.subito.it/annunci-italia/vendita/usato/?q=new+3ds+xl"
 
 SEEN_FILE = "seen.json"
-
-IGNORE_WORDS = [
-    "custodia",
-    "cover",
-    "case",
-    "ricambi",
-    "accessori"
-]
 
 try:
     with open(SEEN_FILE, "r") as f:
@@ -45,44 +27,50 @@ def send_telegram(message):
         }
     )
 
-for url in SEARCH_URLS:
+with sync_playwright() as p:
 
-    response = requests.get(url, headers=HEADERS)
+    browser = p.chromium.launch(headless=True)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    page = browser.new_page()
 
-    links = soup.find_all("a")
+    page.goto(URL, timeout=60000)
 
-    for link in links:
+    page.wait_for_timeout(5000)
 
-        href = link.get("href")
+    links = page.locator("a").evaluate_all("""
+        elements => elements.map(el => ({
+            href: el.href,
+            text: el.innerText
+        }))
+    """)
 
-        if not href:
-            continue
+    found = 0
+
+    for item in links:
+
+        href = item.get("href", "")
+        title = item.get("text", "").strip()
 
         if "/videogiochi/" not in href:
             continue
 
-        title = link.get_text(strip=True)
-
         if not title:
             continue
 
-        title_lower = title.lower()
-
-        if any(word in title_lower for word in IGNORE_WORDS):
+        if href in seen:
             continue
 
-        full_link = href
+        found += 1
 
-        if full_link in seen:
-            continue
-
-        message = f"🔥 NUOVO ANNUNCIO\n\n{title}\n\n{full_link}"
+        message = f"🔥 NUOVO ANNUNCIO\n\n{title}\n\n{href}"
 
         send_telegram(message)
 
-        new_seen.append(full_link)
+        new_seen.append(href)
+
+    browser.close()
+
+send_telegram(f"✅ Scan completato - trovati {found} annunci")
 
 with open(SEEN_FILE, "w") as f:
     json.dump(new_seen[-500:], f)
